@@ -1,0 +1,173 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+	<base href="/">
+    <meta charset="UTF-8">
+    <title>Dashboard de Vendas - Vendedor</title>
+    <script src="https://cdn.jsdelivr.net/npm/echarts/dist/echarts.min.js"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            margin: 0;
+            padding: 0;
+        }
+        .dashboard-header {
+            background: #3a7bd5;
+            color: #fff;
+            padding: 20px;
+            text-align: center;
+        }
+        .filters {
+            padding: 20px;
+            background: #fff;
+            display: flex;
+            gap: 20px;
+            justify-content: center;
+        }
+        .charts-container {
+            display: flex;
+            gap: 40px;
+            justify-content: center;
+            padding: 30px;
+        }
+        .chart-box {
+            background: #fff;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            padding: 25px;
+            width: 550px;
+        }
+        label {
+            font-weight: bold;
+            font-size: 16px;
+        }
+        select, input[type="month"] {
+            padding: 6px 12px;
+            font-size: 15px;
+            border-radius: 4px;
+            border: 1px solid #aaa;
+        }
+    </style>
+</head>
+<body>
+    <div class="dashboard-header">
+        <h2>Dashboard de Vendas do Vendedor</h2>
+    </div>
+    <div class="filters">
+        <label for="periodo">Período:</label>
+        <input type="month" id="periodo" value="2024-06">
+        <label for="estado">Estado:</label>
+        <select id="estado">
+            <option value="Todos">Todos</option>
+            <option value="SP">SP</option>
+            <option value="RJ">RJ</option>
+            <option value="MG">MG</option>
+            <option value="RS">RS</option>
+        </select>
+    </div>
+    <div class="charts-container">
+        <div class="chart-box">
+            <h3>Vendas por Estado</h3>
+            <div id="vendasEstado" style="width:100%;height:350px;"></div>
+        </div>
+        <div class="chart-box">
+            <h3>Clientes: Revenda, Consumidor Final e Novos</h3>
+            <div id="clientesTipo" style="width:100%;height:350px;"></div>
+        </div>
+    </div>
+
+    <script>
+        // Dados simulados dos KPIs (seriam carregados de um backend em produção)
+        const dados = [
+            // Exemplo: cada item representa uma venda/cliente com estado e tipo
+            { estado: 'SP', valor: 120000, tipo: 'Revenda', periodo: '2024-06' },
+            { estado: 'SP', valor: 80000, tipo: 'Consumidor Final', periodo: '2024-06' },
+            { estado: 'SP', valor: 25000, tipo: 'Novo', periodo: '2024-06' },
+            { estado: 'RJ', valor: 55000, tipo: 'Revenda', periodo: '2024-06' },
+            { estado: 'RJ', valor: 40000, tipo: 'Consumidor Final', periodo: '2024-06' },
+            { estado: 'MG', valor: 70000, tipo: 'Revenda', periodo: '2024-06' },
+            { estado: 'MG', valor: 35000, tipo: 'Consumidor Final', periodo: '2024-06' },
+            { estado: 'MG', valor: 12000, tipo: 'Novo', periodo: '2024-06' },
+            { estado: 'RS', valor: 30000, tipo: 'Revenda', periodo: '2024-06' },
+            { estado: 'RS', valor: 18000, tipo: 'Consumidor Final', periodo: '2024-06' },
+            { estado: 'SP', valor: 10000, tipo: 'Revenda', periodo: '2024-05' }, // Período diferente
+            // ... adicione mais dados conforme necessário
+        ];
+
+        // Função para filtrar dados
+        function filtrarDados(periodo, estado) {
+            return dados.filter(item => 
+                (item.periodo === periodo) && 
+                (estado === 'Todos' || item.estado === estado)
+            );
+        }
+
+        // Função para atualizar os charts
+        function atualizarCharts() {
+            const periodo = document.getElementById('periodo').value;
+            const estado = document.getElementById('estado').value;
+            const filtrado = filtrarDados(periodo, estado);
+
+            // Vendas por Estado
+            // Agrupa vendas por estado
+            const estados = ['SP', 'RJ', 'MG', 'RS'];
+            const vendasPorEstado = estados.map(est => {
+                return filtrado.filter(item => item.estado === est)
+                               .reduce((soma, item) => soma + item.valor, 0);
+            });
+
+            let vendasEstadoChart = echarts.init(document.getElementById('vendasEstado'));
+            const optionVendasEstado = {
+                tooltip: { trigger: 'axis' },
+                xAxis: { type: 'category', data: estados },
+                yAxis: { type: 'value' },
+                series: [{
+                    name: 'Vendas',
+                    type: 'bar',
+                    data: vendasPorEstado,
+                    itemStyle: { color: '#3a7bd5' }
+                }]
+            };
+            vendasEstadoChart.setOption(optionVendasEstado);
+
+            // Clientes por tipo
+            const tipos = ['Revenda', 'Consumidor Final', 'Novo'];
+            const clientesPorTipo = tipos.map(tipo => {
+                // Conta quantos clientes por tipo (cada dado para cada tipo tem valor único)
+                return filtrado.filter(item => item.tipo === tipo).length;
+            });
+            let clientesTipoChart = echarts.init(document.getElementById('clientesTipo'));
+            const optionClientesTipo = {
+                tooltip: {
+                    trigger: 'item',
+                    formatter: '{a} <br/>{b}: {c} clientes ({d}%)'
+                },
+                legend: { orient: 'vertical', left: 'left', data: tipos },
+                series: [{
+                    name: 'Clientes',
+                    type: 'pie',
+                    radius: '70%',
+                    center: ['60%', '50%'],
+                    data: [
+                        { value: clientesPorTipo[0], name: 'Revenda' },
+                        { value: clientesPorTipo[1], name: 'Consumidor Final' },
+                        { value: clientesPorTipo[2], name: 'Novo' },
+                    ],
+                    color: ['#1abc9c', '#e67e22', '#8e44ad']
+                }]
+            };
+            clientesTipoChart.setOption(optionClientesTipo);
+        }
+
+        // Eventos dos filtros
+      document.getElementById('periodo').addEventListener('change', atualizarCharts);
+       document.getElementById('estado').addEventListener('change', atualizarCharts);
+
+        // Inicializa charts ao carregar página
+       window.onload = atualizarCharts;
+  
+  </script>
+
+</body>
+</html>
